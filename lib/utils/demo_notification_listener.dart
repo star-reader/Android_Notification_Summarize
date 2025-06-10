@@ -19,6 +19,12 @@ class DemoNotificationListener {
       NotificationListenerService.notificationsStream.listen((event) {
 
         if (event.title == null || event.content == null || event.packageName == null) {
+          eventBus.fire(NotificationReceivedEvent(
+            title: '空',
+            content: '空',
+            packageName: 'com.null.kong',
+            id: '999',
+          ));
           return;
         }
         eventBus.fire(NotificationReceivedEvent(
