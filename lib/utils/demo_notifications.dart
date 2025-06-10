@@ -11,17 +11,14 @@ class DemoNotifications {
 
   void startSendNotifications() async {
     await init();
-    print('startSendNotifications');
     for (int i = 0; i < interval; i++) {
       await Future.delayed(Duration(seconds: timeout));
       await sendNotification();
     }
-    print('endSendNotifications');
     timer?.cancel();
   }
 
   Future<void> sendNotification() async {
-    print('sendNotification');
     await EasyNotifications.showMessage(
       title: 'test', body: 'test body'
     );
