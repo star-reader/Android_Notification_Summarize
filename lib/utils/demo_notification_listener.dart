@@ -18,19 +18,19 @@ class DemoNotificationListener {
       
       NotificationListenerService.notificationsStream.listen((event) {
 
-        if (event.title == null || event.content == null) {
+        if (event.title == null || event.content == null || event.packageName == null) {
           return;
         }
         eventBus.fire(NotificationReceivedEvent(
-          title: event.title ?? '无标题',
-          content: event.content ?? '无内容',
-          packageName: event.packageName ?? '未知应用',
+          title: event.title,
+          content: event.content,
+          packageName: event.packageName,
           id: event.id?.toString() ?? '0',
         ));
-      }, onError: (error) {
-      });
+      }, onError: (_) {
+      }
+    );
       
-    // ignore: empty_catches
-    } catch (exception) { }
+    } catch (_) { }
   }
 }
