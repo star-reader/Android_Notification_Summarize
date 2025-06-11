@@ -10,7 +10,7 @@ class NotificationItemModel {
 
 // 主要存储的通知列表
 class NotificationListModel {
-  // {packagename: '', data: {}}
+  // {packageName: '', data: {}}
   List<Map<String, dynamic>> notificationList = [];
 }
 
