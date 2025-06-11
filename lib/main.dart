@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'models/notifications_model.dart';
+import 'services/files/message_files.dart';
 import 'widgets/navigations/navigation_mobile.dart';
 import 'package:provider/provider.dart';
 import 'utils/demo_notifications.dart';
@@ -38,6 +40,16 @@ class MyApp extends StatelessWidget {
     }
   }
 
+  // test  测试读取本地数据库能力
+  void testReadLocalDatabase() async {
+    MessageFiles messageFiles = MessageFiles();
+    NotificationListModel notificationListModel = await messageFiles.readNotifications();
+    print(notificationListModel.notificationList);
+    print('测试是否是dart格式');
+    print(notificationListModel.notificationList[0]['data']);
+  }
+  
+
   @override
   Widget build(BuildContext context) {
     final navigationStore = context.watch<NavigationStore>();
@@ -49,6 +61,12 @@ class MyApp extends StatelessWidget {
     notificationListener.startListening();
 
     sendNotification();
+
+    // 测试本地读取维护数据库能力
+    print('开始测试本地读取数据库');
+    testReadLocalDatabase();
+    
+
 
     return MaterialApp(
       home: Scaffold(

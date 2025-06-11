@@ -48,8 +48,6 @@ class NotificationsListener {
           'data': notificationItemModel,
         });
         // 写入本地数据库
-        print('开始保存文件到本地数据库11');
-        print(tempNotificationListModel.notificationList);
         messageFiles.writeNotifications(tempNotificationListModel);
       }, onError: (_) {});
     } catch (_) {}
