@@ -1,20 +1,13 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
 import '../../main.dart';
+import '../../configs/private/config_store.dart';
 
 class FetchToken {
-  static String get baseUrl {
-    // Android 设备/模拟器需要使用特殊地址访问主机
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:3390';
-    }
-    return 'http://localhost:3390';
-  }
 
   static Future<String> fetchToken() async {
     try {
       final response = await dio.post(
-        '$baseUrl/auth/token',
+        '${ConfigStore.apiEndpoint}/auth/token',
         data: {
           'client_id': 'summarize.main.usagi',
           'client_secret': '2T6bC6KmnhuRt',

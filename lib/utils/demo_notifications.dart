@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:notification_summarize/utils/random_uuid.dart';
+import '../configs/demo/notifications_demo.dart';
 
 class DemoNotifications {
   int timeout = 6;
   int interval = 10;
+
+  int count = 0;
 
   Timer? timer;
   FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -13,14 +15,16 @@ class DemoNotifications {
 
   void startSendNotifications() async {
     await init();
-    for (int i = 0; i < interval; i++) {
+    count = 0;
+    for (int i = 0; i <= interval; i++) {
+      count++;
       await Future.delayed(Duration(seconds: timeout));
-      await sendNotification();
+      await sendNotification(count);
     }
     timer?.cancel();
   }
 
-  Future<void> sendNotification() async {
+  Future<void> sendNotification(int count) async {
     const AndroidNotificationDetails androidNotificationDetails = AndroidNotificationDetails(
       'usagi push channel',
       'Usagi Push Channel',
@@ -32,11 +36,13 @@ class DemoNotifications {
     const NotificationDetails notificationDetails = NotificationDetails(
       android: androidNotificationDetails,
     );
+
+    var notification = NotificationsDemo.getNotifications(count - 1);
     
     await flutterLocalNotificationsPlugin.show(
       0,
-      '测试通知滚动5',
-      RandomUuid.generateRandomString(6),
+      notification['title'],
+      notification['content'],
       notificationDetails,
     );
   }

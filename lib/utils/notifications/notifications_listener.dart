@@ -45,6 +45,10 @@ class NotificationsListener {
           return;
         }
 
+        if (event.hasRemoved ?? false) {
+          return;
+        }
+
         final notificationItemModel = NotificationItemModel(
           title: event.title,
           content: event.content,
@@ -59,24 +63,19 @@ class NotificationsListener {
         eventBus.fire(notificationItemModel);
         
         // 2. 存储到临时存储并打印日志确认
-        print('添加通知前的存储状态: ${notificationStore.notificationList}');
         notificationStore.addNotificationByPackageName(
           event.packageName ?? '', 
           notificationItemModel
         );
-        print('添加通知后的存储状态: ${notificationStore.notificationList}');
         
         // 3. 保存到本地数据库
         _saveToLocalDatabase(notificationItemModel, messageFiles);
         
         // 4. 立即检查是否需要分析
         _checkAndTriggerAnalysis(event.packageName ?? '');
-      }, onError: (error) {
-        print('通知监听错误: $error');
-      });
-    } catch (e) {
-      print('启动监听错误: $e');
-    }
+      }, onError: (_) { }
+      );
+    } catch (_) { }
   }
 
   void _saveToLocalDatabase(
@@ -93,20 +92,17 @@ class NotificationsListener {
 
   void _checkAndTriggerAnalysis(String packageName) {
     final notifications = notificationStore.getNotificationsByPackageName(packageName);
-    print('检查包 $packageName 的通知: ${notifications.length} 条');
     
     if (_shouldAnalyzeNotifications(notifications)) {
-      print('触发分析任务');
       SummarizeTasks().startSummarizeTask();
     }
   }
 
   bool _shouldAnalyzeNotifications(List<NotificationItemModel> notifications) {
-    print('shouldAnalyzeNotifications: $notifications');
     if (notifications.isEmpty) return false;
 
     final now = DateTime.now();
-    final timeWindow = const Duration(minutes: 5);
+    final timeWindow = const Duration(minutes: 40);
     final minNotifications = 2;  // 最小通知数量阈值
 
     // 获取最近时间窗口内的未分析通知
@@ -127,18 +123,15 @@ class NotificationsListener {
       
       // 如果最新两条通知间隔小于1分钟，立即触发分析
       if (latestTime.difference(previousTime).inMinutes < 1) {
-        print('shouldAnalyzeNotifications: true');
         return true;
       }
       
       // 如果累积了3条以上未分析的通知，也触发分析
       if (recentUnanalyzed.length >= 3) {
-        print('shouldAnalyzeNotifications: true');
         return true;
       }
     }
   
-    print('shouldAnalyzeNotifications: false');
     return false;
   }
 }

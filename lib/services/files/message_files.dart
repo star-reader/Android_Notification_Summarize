@@ -82,7 +82,6 @@ class MessageFiles {
   // 写入通知数据（加密后写入）
   Future<void> writeNotifications(NotificationListModel notifications) async {
     try {
-      print('进入写入数据的函数');
       final filePath = await _getMessageFilePath();
       final file = File(filePath);
       
@@ -127,9 +126,7 @@ class MessageFiles {
       
       // 写入加密后的数据
       await file.writeAsString(encryptedData);
-      print('写入加密数据成功');
     } catch (e) {
-      print('写入错误详情: $e');
       throw Exception('写入通知数据失败: $e');
     }
   }

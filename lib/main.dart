@@ -50,10 +50,10 @@ class MyApp extends StatelessWidget {
   //   await messageFiles.clearOldNotifications();
   // }
 
-  void fetchToken() async {
-    String token = await FetchToken.fetchToken();
-    TokenStore().setToken(token);
-  }
+  // void fetchToken() async {
+  //   String token = await FetchToken.fetchToken();
+  //   TokenStore().setToken(token);
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -69,8 +69,6 @@ class MyApp extends StatelessWidget {
     // clearOldNotifications();
     // 测试的通知页面
     sendNotification();
-
-    fetchToken();
 
     return MaterialApp(
       home: Scaffold(
