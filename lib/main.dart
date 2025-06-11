@@ -8,6 +8,7 @@ import 'services/providers/demo_event_bus.dart';
 import 'package:notification_listener_service/notification_listener_service.dart';
 import 'services/providers/global_notification_store.dart';
 import 'services/providers/navigation_store.dart';
+import 'pages/notifications_data/notifications_data_index.dart';
 
 void main() {
   runApp(
@@ -51,7 +52,7 @@ class MyApp extends StatelessWidget {
           index: navigationStore.currentPageIndex,
           children: const [
             DemoContentArea(),
-            DemoContentArea(),
+            NotificationsDataIndex(),
             DemoContentArea(),
           ],
         ),

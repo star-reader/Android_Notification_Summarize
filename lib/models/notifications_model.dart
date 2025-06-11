@@ -5,7 +5,16 @@ class NotificationItemModel {
   String? packageName;
   String? id;
   bool? hasRemoved;
-  int? time;
+  String? time;
+
+  NotificationItemModel({
+    this.title,
+    this.content,
+    this.packageName,
+    this.id,
+    this.hasRemoved,
+    this.time,
+  });
 }
 
 // 主要存储的通知列表
