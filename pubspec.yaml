@@ -45,6 +45,7 @@ dependencies:
   path: ^1.9.1
   encrypt: ^5.0.3
   crypto: ^3.0.6
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:

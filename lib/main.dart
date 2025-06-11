@@ -56,15 +56,16 @@ class MyApp extends StatelessWidget {
     notificationListener.startListening();
 
     // 预准备工作
-    clearOldNotifications();
+    // clearOldNotifications();
     // 测试的通知页面
-    sendNotification();
+    // sendNotification();
 
     return MaterialApp(
       home: Scaffold(
         body: IndexedStack(
           index: navigationStore.currentPageIndex,
           children: const [
+            DemoContentArea(),
             DemoContentArea(),
             NotificationsDataIndex(),
             DemoContentArea(),
@@ -98,7 +99,6 @@ class MyApp extends StatelessWidget {
       ),
       themeMode: ThemeMode.system,
     );
-    
   }
 }
 

@@ -27,6 +27,10 @@ class _NavigationMobileState extends State<NavigationMobile> {
             label: '主页',
           ),
           NavigationDestination(
+            icon: Badge(child: Icon(Icons.list_outlined)),
+            label: '摘要',
+          ),
+          NavigationDestination(
             icon: Badge(child: Icon(Icons.notifications_sharp)),
             label: '通知',
           ),
