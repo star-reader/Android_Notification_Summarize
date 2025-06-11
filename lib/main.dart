@@ -58,7 +58,7 @@ class MyApp extends StatelessWidget {
     // 预准备工作
     // clearOldNotifications();
     // 测试的通知页面
-    // sendNotification();
+    sendNotification();
 
     return MaterialApp(
       home: Scaffold(

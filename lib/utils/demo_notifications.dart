@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:notification_summarize/utils/random_uuid.dart';
 
 class DemoNotifications {
   int timeout = 6;
@@ -34,8 +35,8 @@ class DemoNotifications {
     
     await flutterLocalNotificationsPlugin.show(
       0,
-      '测试通知2',
-      '这也是个测试通知',
+      '测试通知滚动5',
+      RandomUuid.generateRandomString(6),
       notificationDetails,
     );
   }

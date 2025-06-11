@@ -1,5 +1,6 @@
 import 'package:notification_listener_service/notification_listener_service.dart';
 import '../../models/notifications_model.dart';
+import '../../services/providers/demo_event_bus.dart';
 import '../../services/providers/global_notification_store.dart';
 import '../../services/files/message_files.dart';
 import '../random_uuid.dart';
@@ -39,6 +40,9 @@ class NotificationsListener {
           uuid: RandomUuid.generateRandomString(16),
           time: DateTime.now().toString(),
         );
+
+        // 最终还是event bus了
+        eventBus.fire(notificationItemModel);
         // 临时储存用来做通知分析和摘要的
         NotificationStore().addNotificationByPackageName(event.packageName ?? '', notificationItemModel);
         // 存到本地数据库
