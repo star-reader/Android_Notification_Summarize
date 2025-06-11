@@ -1,13 +1,24 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'widgets/navigations/navigation_mobile.dart';
+import 'package:provider/provider.dart';
 import 'utils/demo_notifications.dart';
 import 'utils/demo_notification_listener.dart';
 import 'services/providers/demo_event_bus.dart';
 import 'package:notification_listener_service/notification_listener_service.dart';
+import 'services/providers/global_notification_store.dart';
+import 'services/providers/navigation_store.dart';
 
 void main() {
-  runApp(const MyApp());  
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => NotificationStore()),
+        ChangeNotifierProvider(create: (context) => NavigationStore()),
+      ],
+      child: const MyApp(),
+    )
+  );  
 }
 
 class MyApp extends StatelessWidget {
@@ -18,55 +29,59 @@ class MyApp extends StatelessWidget {
     demoNotifications.startSendNotifications();
   }
 
+  void grantPermission() async {
+    final status = await NotificationListenerService.isPermissionGranted();
+    if (!status) {
+      await NotificationListenerService.requestPermission();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final navigationStore = context.watch<NavigationStore>();
 
     DemoNotificationListener notificationListener = DemoNotificationListener();
     notificationListener.startListening();
 
+    grantPermission();
+
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(
-          title: const Text('通知汇总'),
-          actions: [
-            FutureBuilder<bool>(
-              future: NotificationListenerService.isPermissionGranted(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  return Icon(
-                    snapshot.data! ? Icons.check_circle : Icons.error,
-                    color: snapshot.data! ? Colors.green : Colors.red,
-                  );
-                }
-                return const Icon(Icons.help);
-              },
-            ),
+        body: IndexedStack(
+          index: navigationStore.currentPageIndex,
+          children: const [
+            DemoContentArea(),
+            DemoContentArea(),
+            DemoContentArea(),
           ],
         ),
-        body: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Center(
-              child: ElevatedButton(
-                onPressed: () => sendNotification(), 
-                child: const Text('Send Notification')
-              )
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () async {
-                final status = await NotificationListenerService.isPermissionGranted();
-                if (!status) {
-                  await NotificationListenerService.requestPermission();
-                }
-              },
-              child: const Text('检查/请求权限'),
-            ),
-            const SizedBox(height: 20),
-            const DemoContentArea(),
-          ],
+        bottomNavigationBar: const NavigationMobile(),
+      ),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blueAccent,
+          brightness: Brightness.light,
+        ),
+        useMaterial3: true,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
         ),
       ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blueAccent,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
+        ),
+      ),
+      themeMode: ThemeMode.system,
     );
     
   }

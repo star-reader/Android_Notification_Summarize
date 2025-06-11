@@ -40,6 +40,7 @@ dependencies:
   provider: ^6.1.5
   forui: ^0.12.0
   forui_assets: ^0.12.0
+  shared_preferences: ^2.3.2
 
 dev_dependencies:
   flutter_test:
