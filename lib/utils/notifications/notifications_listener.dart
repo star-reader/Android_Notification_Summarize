@@ -1,16 +1,30 @@
+import 'dart:async';
+
 import 'package:notification_listener_service/notification_listener_service.dart';
 import '../../models/notifications_model.dart';
 import '../../services/providers/demo_event_bus.dart';
 import '../../services/providers/global_notification_store.dart';
 import '../../services/files/message_files.dart';
+import '../../services/summarize/summarize_tasks.dart';
 import '../random_uuid.dart';
 
 class NotificationsListener {
+
+  // 在 NotificationsListener 类中添加
+  Timer? _periodicAnalysisTimer;
+
+  final NotificationStore notificationStore = NotificationStore();
+
+  void startPeriodicAnalysis() {
+    _periodicAnalysisTimer?.cancel();
+    _periodicAnalysisTimer = Timer.periodic(const Duration(minutes: 3), (timer) {
+      SummarizeTasks().startSummarizeTask();
+    });
+  }
+
   void startListening() async {
     try {
-      // 检查当前权限状态
       final bool status = await NotificationListenerService.isPermissionGranted();
-
       MessageFiles messageFiles = MessageFiles();
 
       if (!status) {
@@ -21,39 +35,111 @@ class NotificationsListener {
         }
       }
 
+      // 启动定时分析（作为备份机制）
+      startPeriodicAnalysis();
+
       NotificationListenerService.notificationsStream.listen((event) {
         if (event.title == null ||
             event.content == null ||
             event.packageName == null) {
           return;
         }
-        // @deprecated 不使用eventbus
-        // 使用store将拦截的通知储存，然后调用通知分析和摘要的
-        // 通知一共三份：临时的数据NotificationStore、存到本地数据库的、通知临时摘要数据库（不确定要不要存到本地）
-        // todo 通知分析摘要在这里引用
-        // todo 保存通知数据到本地数据库
-        NotificationItemModel notificationItemModel = NotificationItemModel(
+
+        final notificationItemModel = NotificationItemModel(
           title: event.title,
           content: event.content,
           packageName: event.packageName,
           id: event.id?.toString() ?? '0',
           uuid: RandomUuid.generateRandomString(16),
           time: DateTime.now().toString(),
+          hasAnalyzed: false,
         );
 
-        // 最终还是event bus了
+        // 1. 发送到 EventBus
         eventBus.fire(notificationItemModel);
-        // 临时储存用来做通知分析和摘要的
-        NotificationStore().addNotificationByPackageName(event.packageName ?? '', notificationItemModel);
-        // 存到本地数据库
-        NotificationListModel tempNotificationListModel = NotificationListModel();
-        tempNotificationListModel.notificationList.add({
-          'packageName': event.packageName ?? '',
-          'data': notificationItemModel,
-        });
-        // 写入本地数据库
-        messageFiles.writeNotifications(tempNotificationListModel);
-      }, onError: (_) {});
-    } catch (_) {}
+        
+        // 2. 存储到临时存储并打印日志确认
+        print('添加通知前的存储状态: ${notificationStore.notificationList}');
+        notificationStore.addNotificationByPackageName(
+          event.packageName ?? '', 
+          notificationItemModel
+        );
+        print('添加通知后的存储状态: ${notificationStore.notificationList}');
+        
+        // 3. 保存到本地数据库
+        _saveToLocalDatabase(notificationItemModel, messageFiles);
+        
+        // 4. 立即检查是否需要分析
+        _checkAndTriggerAnalysis(event.packageName ?? '');
+      }, onError: (error) {
+        print('通知监听错误: $error');
+      });
+    } catch (e) {
+      print('启动监听错误: $e');
+    }
+  }
+
+  void _saveToLocalDatabase(
+    NotificationItemModel notification, 
+    MessageFiles messageFiles
+  ) {
+    NotificationListModel tempNotificationListModel = NotificationListModel();
+    tempNotificationListModel.notificationList.add({
+      'packageName': notification.packageName ?? '',
+      'data': notification,
+    });
+    messageFiles.writeNotifications(tempNotificationListModel);
+  }
+
+  void _checkAndTriggerAnalysis(String packageName) {
+    final notifications = notificationStore.getNotificationsByPackageName(packageName);
+    print('检查包 $packageName 的通知: ${notifications.length} 条');
+    
+    if (_shouldAnalyzeNotifications(notifications)) {
+      print('触发分析任务');
+      SummarizeTasks().startSummarizeTask();
+    }
+  }
+
+  bool _shouldAnalyzeNotifications(List<NotificationItemModel> notifications) {
+    print('shouldAnalyzeNotifications: $notifications');
+    if (notifications.isEmpty) return false;
+
+    final now = DateTime.now();
+    final timeWindow = const Duration(minutes: 5);
+    final minNotifications = 2;  // 最小通知数量阈值
+
+    // 获取最近时间窗口内的未分析通知
+    final recentUnanalyzed = notifications.where((notification) {
+      if (notification.hasAnalyzed ?? false) return false;
+      
+      final notificationTime = DateTime.parse(notification.time ?? now.toString());
+      final timeDiff = now.difference(notificationTime);
+      
+      return timeDiff <= timeWindow;
+    }).toList();
+
+    // 检查通知数量和时间间隔
+    if (recentUnanalyzed.length >= minNotifications) {
+      // 检查最新两条通知的时间间隔
+      final latestTime = DateTime.parse(recentUnanalyzed.last.time!);
+      final previousTime = DateTime.parse(recentUnanalyzed[recentUnanalyzed.length - 2].time!);
+      
+      // 如果最新两条通知间隔小于1分钟，立即触发分析
+      if (latestTime.difference(previousTime).inMinutes < 1) {
+        print('shouldAnalyzeNotifications: true');
+        return true;
+      }
+      
+      // 如果累积了3条以上未分析的通知，也触发分析
+      if (recentUnanalyzed.length >= 3) {
+        print('shouldAnalyzeNotifications: true');
+        return true;
+      }
+    }
+  
+    print('shouldAnalyzeNotifications: false');
+    return false;
   }
 }
+

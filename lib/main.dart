@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'services/files/message_files.dart';
 import 'widgets/navigations/navigation_mobile.dart';
 import 'package:provider/provider.dart';
 import 'utils/demo_notifications.dart';
@@ -33,7 +32,7 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
   
   void sendNotification() async {
-    DemoNotifications demoNotifications = DemoNotifications(2, 6);
+    DemoNotifications demoNotifications = DemoNotifications(4, 6);
     demoNotifications.startSendNotifications();
   }
 
@@ -44,12 +43,12 @@ class MyApp extends StatelessWidget {
     }
   }
 
-  // 删除两天前的旧消息
-  // todo  后续改成用户可以自定义时间
-  void clearOldNotifications() async {
-    MessageFiles messageFiles = MessageFiles();
-    await messageFiles.clearOldNotifications();
-  }
+  // // 删除两天前的旧消息
+  // // todo  后续改成用户可以自定义时间
+  // void clearOldNotifications() async {
+  //   MessageFiles messageFiles = MessageFiles();
+  //   await messageFiles.clearOldNotifications();
+  // }
 
   void fetchToken() async {
     String token = await FetchToken.fetchToken();

@@ -7,6 +7,7 @@ class NotificationItemModel {
   String? uuid;
   bool? hasRemoved;
   String? time;
+  bool? hasAnalyzed;
 
   NotificationItemModel({
     this.title,
@@ -16,6 +17,7 @@ class NotificationItemModel {
     this.uuid,
     this.hasRemoved,
     this.time,
+    this.hasAnalyzed,
   });
 
   Map<String, dynamic> toJson() {
