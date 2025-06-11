@@ -38,6 +38,8 @@ dependencies:
   notification_listener_service: ^0.3.4
   event_bus: ^2.0.1
   provider: ^6.1.5
+  forui: ^0.12.0
+  forui_assets: ^0.12.0
 
 dev_dependencies:
   flutter_test:

@@ -39,5 +39,4 @@ class NotificationStore extends ChangeNotifier {
     _notificationList.notificationList.clear();
   }
 
-
 }
