@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'models/notifications_model.dart';
 import 'services/files/message_files.dart';
-import 'utils/encrypt_db.dart';
 import 'widgets/navigations/navigation_mobile.dart';
 import 'package:provider/provider.dart';
 import 'utils/demo_notifications.dart';
@@ -14,8 +13,6 @@ import 'services/providers/navigation_store.dart';
 import 'pages/notifications_data/notifications_data_index.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await EncryptionUtils.initialize();
   runApp(
     MultiProvider(
       providers: [
