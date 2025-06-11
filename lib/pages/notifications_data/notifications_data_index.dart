@@ -5,8 +5,6 @@ class NotificationsDataIndex extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Notifications Data Index')),
-    );
+    return const Center(child: Text('Notifications Data Index'));
   }
 }
