@@ -37,6 +37,7 @@ dependencies:
   flutter_local_notifications: ^17.2.3
   notification_listener_service: ^0.3.4
   event_bus: ^2.0.1
+  provider: ^6.1.5
 
 dev_dependencies:
   flutter_test:

@@ -1,5 +1,4 @@
 import 'package:notification_listener_service/notification_listener_service.dart';
-
 import 'package:notification_summarize/services/providers/demo_event_bus.dart';
 
 class DemoNotificationListener {
@@ -17,14 +16,7 @@ class DemoNotificationListener {
       }
       
       NotificationListenerService.notificationsStream.listen((event) {
-
         if (event.title == null || event.content == null || event.packageName == null) {
-          eventBus.fire(NotificationReceivedEvent(
-            title: '空',
-            content: '空',
-            packageName: 'com.null.kong',
-            id: '999',
-          ));
           return;
         }
         eventBus.fire(NotificationReceivedEvent(
@@ -32,6 +24,7 @@ class DemoNotificationListener {
           content: event.content,
           packageName: event.packageName,
           id: event.id?.toString() ?? '0',
+          time: DateTime.now().toString(),
         ));
       }, onError: (_) {
       }

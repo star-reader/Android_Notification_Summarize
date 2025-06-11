@@ -21,9 +21,9 @@ class DemoNotifications {
 
   Future<void> sendNotification() async {
     const AndroidNotificationDetails androidNotificationDetails = AndroidNotificationDetails(
-      'test_channel',
-      'Test Channel',
-      channelDescription: 'Test notifications',
+      'usagi push channel',
+      'Usagi Push Channel',
+      channelDescription: 'Usagi Push Channel',
       importance: Importance.max,
       priority: Priority.high,
     );
@@ -34,8 +34,8 @@ class DemoNotifications {
     
     await flutterLocalNotificationsPlugin.show(
       0,
-      'test',
-      'test body',
+      '突发！突然官宣！就在今年！关乎大湾区！',
+      '目前，我们正加速推进东晓南路—广州南站联络线南段、五山路—广园路立交等工程。着力推动“轨道上的大湾区”建设，在全运会前计划建成开通广佛东环城际、穗莞深城际琶洲支线、新白广城际（白云机场T2至竹料段），届时可串联白云机场、金融城、琶洲、广州南站等重要商务区和交通枢纽；继续加快地铁10号线、12号线东段和西段、13号线二期、14号线二期等4条（5段）轨道交通线路的建设，力争全运会前通车，为市民和观赛群众提供更便捷的出行环境。',
       notificationDetails,
     );
   }

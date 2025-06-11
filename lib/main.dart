@@ -111,6 +111,7 @@ class _DemoContentAreaState extends State<DemoContentArea> {
           Text('Content: ${notificationReceivedEvent?.content ?? ''}'),
           Text('Package Name: ${notificationReceivedEvent?.packageName ?? ''}'),
           Text('ID: ${notificationReceivedEvent?.id ?? ''}'),
+          Text('Time: ${notificationReceivedEvent?.time ?? ''}')
         ],
       ),
     );

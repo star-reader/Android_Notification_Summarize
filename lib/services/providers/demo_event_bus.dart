@@ -7,6 +7,7 @@ class NotificationReceivedEvent {
   String? content;
   String? packageName;
   String? id;
+  String? time;
 
-  NotificationReceivedEvent({this.title, this.content, this.packageName, this.id});
+  NotificationReceivedEvent({this.title, this.content, this.packageName, this.id, this.time});
 }
