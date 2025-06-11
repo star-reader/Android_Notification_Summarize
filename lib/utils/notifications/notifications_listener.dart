@@ -24,7 +24,9 @@ class NotificationsListener {
         }
         // @deprecated 不使用eventbus
         // 使用store将拦截的通知储存，然后调用通知分析和摘要的
+        // 通知一共三份：临时的数据NotificationStore、存到本地数据库的、通知临时摘要数据库（不确定要不要存到本地）
         // todo 通知分析摘要在这里引用
+        // todo 保存通知数据到本地数据库
         NotificationStore().addNotificationByPackageName(event.packageName ?? '', NotificationItemModel(
           title: event.title,
           content: event.content,
