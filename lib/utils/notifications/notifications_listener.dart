@@ -1,12 +1,15 @@
 import 'package:notification_listener_service/notification_listener_service.dart';
 import '../../models/notifications_model.dart';
 import '../../services/providers/global_notification_store.dart';
+import '../../services/files/message_files.dart';
 
 class NotificationsListener {
   void startListening() async {
     try {
       // 检查当前权限状态
       final bool status = await NotificationListenerService.isPermissionGranted();
+
+      MessageFiles messageFiles = MessageFiles();
 
       if (!status) {
         await NotificationListenerService.requestPermission();
@@ -27,13 +30,23 @@ class NotificationsListener {
         // 通知一共三份：临时的数据NotificationStore、存到本地数据库的、通知临时摘要数据库（不确定要不要存到本地）
         // todo 通知分析摘要在这里引用
         // todo 保存通知数据到本地数据库
-        NotificationStore().addNotificationByPackageName(event.packageName ?? '', NotificationItemModel(
+        NotificationItemModel notificationItemModel = NotificationItemModel(
           title: event.title,
           content: event.content,
           packageName: event.packageName,
           id: event.id?.toString() ?? '0',
           time: DateTime.now().toString(),
-        ));
+        );
+        // 临时储存用来做通知分析和摘要的
+        NotificationStore().addNotificationByPackageName(event.packageName ?? '', notificationItemModel);
+        // 存到本地数据库
+        NotificationListModel notificationListModel = NotificationListModel();
+        notificationListModel.notificationList.add({
+          event.packageName ?? '' : notificationItemModel,
+        });
+        // 写入本地数据库
+        messageFiles.writeNotifications(notificationListModel);
+
       }, onError: (_) {});
     } catch (_) {}
   }
