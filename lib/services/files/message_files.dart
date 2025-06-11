@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import '../../models/notifications_model.dart';
+import '../../utils/encrypt_db.dart';
 
 class MessageFiles {
   static const String _fileName = 'msg.db';
@@ -78,7 +79,7 @@ class MessageFiles {
     return mergedModel;
   }
   
-  // 写入通知数据（合并模式）
+  // 写入通知数据（加密后写入）
   Future<void> writeNotifications(NotificationListModel notifications) async {
     try {
       print('进入写入数据的函数');
@@ -87,11 +88,13 @@ class MessageFiles {
       
       NotificationListModel existingData = NotificationListModel();
       
-      // 如果文件存在，先读取现有数据
+      // 如果文件存在，先读取并解密现有数据
       if (await file.exists()) {
-        String content = await file.readAsString();
-        if (content.isNotEmpty) {
-          Map<String, dynamic> jsonData = json.decode(content);
+        String encryptedContent = await file.readAsString();
+        if (encryptedContent.isNotEmpty) {
+          // 使用 EncryptionUtils 解密
+          String decryptedContent = EncryptionUtils.decryptString(encryptedContent);
+          Map<String, dynamic> jsonData = json.decode(decryptedContent);
           existingData.notificationList = List<Map<String, dynamic>>.from(
             (jsonData['notificationList'] as List).map((item) => {
               'packageName': item['packageName'],
@@ -101,7 +104,7 @@ class MessageFiles {
         }
       }
       
-      // 准备新数据，确保所有 NotificationItemModel 都转换为 Map
+      // 准备新数据
       NotificationListModel preparedNotifications = NotificationListModel();
       for (var item in notifications.notificationList) {
         preparedNotifications.notificationList.add({
@@ -115,20 +118,23 @@ class MessageFiles {
       // 合并数据
       NotificationListModel mergedData = _mergeNotifications(existingData, preparedNotifications);
       
-      // 转换为JSON并写入文件
+      // 转换为JSON，然后使用 EncryptionUtils 加密
       final jsonString = json.encode({
         'notificationList': mergedData.notificationList,
       });
       
-      await file.writeAsString(jsonString);
-      print('写入通知数据成功');
+      final encryptedData = EncryptionUtils.encrypt(jsonString);
+      
+      // 写入加密后的数据
+      await file.writeAsString(encryptedData);
+      print('写入加密数据成功');
     } catch (e) {
       print('写入错误详情: $e');
       throw Exception('写入通知数据失败: $e');
     }
   }
   
-  // 读取通知数据
+  // 读取通知数据（读取后解密）
   Future<NotificationListModel> readNotifications() async {
     try {
       final filePath = await _getMessageFilePath();
@@ -139,13 +145,16 @@ class MessageFiles {
         return NotificationListModel();
       }
       
-      String content = await file.readAsString();
-      if (content.isEmpty) {
+      String encryptedContent = await file.readAsString();
+      if (encryptedContent.isEmpty) {
         return NotificationListModel();
       }
       
+      // 使用 EncryptionUtils 解密
+      String decryptedContent = EncryptionUtils.decryptString(encryptedContent);
+      
       // 解析JSON数据
-      Map<String, dynamic> jsonData = json.decode(content);
+      Map<String, dynamic> jsonData = json.decode(decryptedContent);
       NotificationListModel model = NotificationListModel();
       model.notificationList = List<Map<String, dynamic>>.from(
         (jsonData['notificationList'] as List).map((item) => {
@@ -160,16 +169,19 @@ class MessageFiles {
     }
   }
   
-  // 清空通知数据
+  // 清空通知数据（加密空数据）
   Future<void> clearNotifications() async {
     try {
       final filePath = await _getMessageFilePath();
       final file = File(filePath);
       
       if (await file.exists()) {
-        await file.writeAsString(json.encode({
+        final emptyJson = json.encode({
           'notificationList': [],
-        }));
+        });
+        // 使用 EncryptionUtils 加密空数据
+        final encryptedEmpty = EncryptionUtils.encrypt(emptyJson);
+        await file.writeAsString(encryptedEmpty);
       }
     } catch (e) {
       throw Exception('清空通知数据失败: $e');
@@ -215,4 +227,62 @@ class MessageFiles {
       return false;
     }
   }
+
+  // 清除2天前的通知数据
+  Future<void> clearOldNotifications() async {
+    try {
+      final filePath = await _getMessageFilePath();
+      final file = File(filePath);
+      
+      // 如果文件不存在，直接返回
+      if (!await file.exists()) {
+        return;
+      }
+      
+      // 读取并解密现有数据
+      String encryptedContent = await file.readAsString();
+      if (encryptedContent.isEmpty) {
+        return;
+      }
+      
+      // 解密数据
+      String decryptedContent = EncryptionUtils.decryptString(encryptedContent);
+      Map<String, dynamic> jsonData = json.decode(decryptedContent);
+      
+      // 获取2天前的时间
+      final twoDaysAgo = DateTime.now().subtract(const Duration(days: 2));
+      
+      // 过滤通知列表，只保留2天内的通知
+      final List<dynamic> oldList = jsonData['notificationList'] as List;
+      final List<Map<String, dynamic>> newList = [];
+      
+      for (var item in oldList) {
+        // 从data中获取时间字符串并解析
+        final timeStr = item['data']['time'] as String;
+        final notificationTime = DateTime.parse(timeStr);
+        
+        // 如果通知时间在2天内，保留该通知
+        if (notificationTime.isAfter(twoDaysAgo)) {
+          newList.add(item as Map<String, dynamic>);
+        }
+      }
+      
+      // 创建新的JSON数据
+      final newJsonData = {
+        'notificationList': newList,
+      };
+      
+      // 加密新数据
+      final newEncryptedData = EncryptionUtils.encrypt(json.encode(newJsonData));
+      
+      // 写入文件
+      await file.writeAsString(newEncryptedData);
+      
+      print('成功清除2天前的通知数据');
+    } catch (e) {
+      print('清除旧通知数据失败: $e');
+      throw Exception('清除旧通知数据失败: $e');
+    }
+  }
+
 }

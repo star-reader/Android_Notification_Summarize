@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'models/notifications_model.dart';
 import 'services/files/message_files.dart';
 import 'widgets/navigations/navigation_mobile.dart';
 import 'package:provider/provider.dart';
@@ -12,7 +11,7 @@ import 'services/providers/global_notification_store.dart';
 import 'services/providers/navigation_store.dart';
 import 'pages/notifications_data/notifications_data_index.dart';
 
-void main() async {
+void main() {
   runApp(
     MultiProvider(
       providers: [
@@ -28,7 +27,7 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
   
   void sendNotification() async {
-    DemoNotifications demoNotifications = DemoNotifications(10, 6);
+    DemoNotifications demoNotifications = DemoNotifications(2, 6);
     demoNotifications.startSendNotifications();
   }
 
@@ -39,15 +38,12 @@ class MyApp extends StatelessWidget {
     }
   }
 
-  // test  测试读取本地数据库能力
-  void testReadLocalDatabase() async {
+  // 删除两天前的旧消息
+  // todo  后续改成用户可以自定义时间
+  void clearOldNotifications() async {
     MessageFiles messageFiles = MessageFiles();
-    NotificationListModel notificationListModel = await messageFiles.readNotifications();
-    print(notificationListModel.notificationList);
-    print('测试是否是dart格式');
-    print(notificationListModel.notificationList[0]['data']);
+    await messageFiles.clearOldNotifications();
   }
-  
 
   @override
   Widget build(BuildContext context) {
@@ -59,13 +55,10 @@ class MyApp extends StatelessWidget {
     NotificationsListener notificationListener = NotificationsListener();
     notificationListener.startListening();
 
+    // 预准备工作
+    clearOldNotifications();
+    // 测试的通知页面
     sendNotification();
-
-    // 测试本地读取维护数据库能力
-    print('开始测试本地读取数据库');
-    testReadLocalDatabase();
-    
-
 
     return MaterialApp(
       home: Scaffold(
