@@ -42,6 +42,7 @@ dependencies:
   forui_assets: ^0.12.0
   shared_preferences: ^2.3.2
   path_provider: ^2.1.5
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:

@@ -2,6 +2,7 @@ import 'package:notification_listener_service/notification_listener_service.dart
 import '../../models/notifications_model.dart';
 import '../../services/providers/global_notification_store.dart';
 import '../../services/files/message_files.dart';
+import '../random_uuid.dart';
 
 class NotificationsListener {
   void startListening() async {
@@ -35,18 +36,21 @@ class NotificationsListener {
           content: event.content,
           packageName: event.packageName,
           id: event.id?.toString() ?? '0',
+          uuid: RandomUuid.generateRandomString(16),
           time: DateTime.now().toString(),
         );
         // 临时储存用来做通知分析和摘要的
         NotificationStore().addNotificationByPackageName(event.packageName ?? '', notificationItemModel);
         // 存到本地数据库
-        NotificationListModel notificationListModel = NotificationListModel();
-        notificationListModel.notificationList.add({
-          event.packageName ?? '' : notificationItemModel,
+        NotificationListModel tempNotificationListModel = NotificationListModel();
+        tempNotificationListModel.notificationList.add({
+          'packageName': event.packageName ?? '',
+          'data': notificationItemModel,
         });
         // 写入本地数据库
-        messageFiles.writeNotifications(notificationListModel);
-
+        print('开始保存文件到本地数据库11');
+        print(tempNotificationListModel.notificationList);
+        messageFiles.writeNotifications(tempNotificationListModel);
       }, onError: (_) {});
     } catch (_) {}
   }

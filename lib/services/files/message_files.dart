@@ -45,7 +45,11 @@ class MessageFiles {
       if (!packageMap.containsKey(packageName)) {
         packageMap[packageName] = [];
       }
-      packageMap[packageName]!.add(item['data'] as Map<String, dynamic>);
+      // 确保 data 是 Map<String, dynamic> 格式
+      Map<String, dynamic> dataMap = (item['data'] is NotificationItemModel) 
+          ? (item['data'] as NotificationItemModel).toJson()
+          : (item['data'] as Map<String, dynamic>);
+      packageMap[packageName]!.add(dataMap);
     }
     
     // 合并新数据
@@ -54,7 +58,11 @@ class MessageFiles {
       if (!packageMap.containsKey(packageName)) {
         packageMap[packageName] = [];
       }
-      packageMap[packageName]!.add(item['data'] as Map<String, dynamic>);
+      // 确保 data 是 Map<String, dynamic> 格式
+      Map<String, dynamic> dataMap = (item['data'] is NotificationItemModel) 
+          ? (item['data'] as NotificationItemModel).toJson()
+          : (item['data'] as Map<String, dynamic>);
+      packageMap[packageName]!.add(dataMap);
     }
     
     // 转换回列表格式
@@ -73,6 +81,7 @@ class MessageFiles {
   // 写入通知数据（合并模式）
   Future<void> writeNotifications(NotificationListModel notifications) async {
     try {
+      print('进入写入数据的函数');
       final filePath = await _getMessageFilePath();
       final file = File(filePath);
       
@@ -83,12 +92,28 @@ class MessageFiles {
         String content = await file.readAsString();
         if (content.isNotEmpty) {
           Map<String, dynamic> jsonData = json.decode(content);
-          existingData.notificationList = List<Map<String, dynamic>>.from(jsonData['notificationList']);
+          existingData.notificationList = List<Map<String, dynamic>>.from(
+            (jsonData['notificationList'] as List).map((item) => {
+              'packageName': item['packageName'],
+              'data': item['data'],
+            })
+          );
         }
       }
       
+      // 准备新数据，确保所有 NotificationItemModel 都转换为 Map
+      NotificationListModel preparedNotifications = NotificationListModel();
+      for (var item in notifications.notificationList) {
+        preparedNotifications.notificationList.add({
+          'packageName': item['packageName'],
+          'data': (item['data'] is NotificationItemModel) 
+              ? (item['data'] as NotificationItemModel).toJson()
+              : item['data'],
+        });
+      }
+      
       // 合并数据
-      NotificationListModel mergedData = _mergeNotifications(existingData, notifications);
+      NotificationListModel mergedData = _mergeNotifications(existingData, preparedNotifications);
       
       // 转换为JSON并写入文件
       final jsonString = json.encode({
@@ -96,7 +121,9 @@ class MessageFiles {
       });
       
       await file.writeAsString(jsonString);
+      print('写入通知数据成功');
     } catch (e) {
+      print('写入错误详情: $e');
       throw Exception('写入通知数据失败: $e');
     }
   }
@@ -120,7 +147,12 @@ class MessageFiles {
       // 解析JSON数据
       Map<String, dynamic> jsonData = json.decode(content);
       NotificationListModel model = NotificationListModel();
-      model.notificationList = List<Map<String, dynamic>>.from(jsonData['notificationList']);
+      model.notificationList = List<Map<String, dynamic>>.from(
+        (jsonData['notificationList'] as List).map((item) => {
+          'packageName': item['packageName'],
+          'data': item['data'],
+        })
+      );
       
       return model;
     } catch (e) {

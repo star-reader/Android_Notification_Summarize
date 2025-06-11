@@ -6,6 +6,7 @@ import 'utils/demo_notifications.dart';
 import 'utils/demo_notification_listener.dart';
 import 'services/providers/demo_event_bus.dart';
 import 'package:notification_listener_service/notification_listener_service.dart';
+import 'utils/notifications/notifications_listener.dart';
 import 'services/providers/global_notification_store.dart';
 import 'services/providers/navigation_store.dart';
 import 'pages/notifications_data/notifications_data_index.dart';
@@ -41,10 +42,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final navigationStore = context.watch<NavigationStore>();
 
-    DemoNotificationListener notificationListener = DemoNotificationListener();
+    grantPermission();
+
+    // 进入就开始监听通知
+    NotificationsListener notificationListener = NotificationsListener();
     notificationListener.startListening();
 
-    grantPermission();
+    sendNotification();
 
     return MaterialApp(
       home: Scaffold(
