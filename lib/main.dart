@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'services/files/message_files.dart';
 import 'widgets/navigations/navigation_mobile.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +11,10 @@ import 'utils/notifications/notifications_listener.dart';
 import 'services/providers/global_notification_store.dart';
 import 'services/providers/navigation_store.dart';
 import 'pages/notifications_data/notifications_data_index.dart';
+import 'services/providers/token_store.dart';
+import 'services/auth/fetch_token.dart';
+
+final dio = Dio();
 
 void main() {
   runApp(
@@ -17,6 +22,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (context) => NotificationStore()),
         ChangeNotifierProvider(create: (context) => NavigationStore()),
+        ChangeNotifierProvider(create: (context) => TokenStore()),
       ],
       child: const MyApp(),
     )
@@ -45,6 +51,11 @@ class MyApp extends StatelessWidget {
     await messageFiles.clearOldNotifications();
   }
 
+  void fetchToken() async {
+    String token = await FetchToken.fetchToken();
+    TokenStore().setToken(token);
+  }
+
   @override
   Widget build(BuildContext context) {
     final navigationStore = context.watch<NavigationStore>();
@@ -59,6 +70,8 @@ class MyApp extends StatelessWidget {
     // clearOldNotifications();
     // 测试的通知页面
     sendNotification();
+
+    fetchToken();
 
     return MaterialApp(
       home: Scaffold(

@@ -8,7 +8,6 @@ import '../../services/providers/demo_event_bus.dart';
 import '../../widgets/notifications/notification_list.dart';
 import '../../widgets/notifications/notification_detail_dialog.dart';
 import '../../widgets/notifications/loading_state.dart';
-import '../../widgets/notifications/error_state.dart';
 
 class NotificationsDataIndex extends StatefulWidget {
   const NotificationsDataIndex({super.key});

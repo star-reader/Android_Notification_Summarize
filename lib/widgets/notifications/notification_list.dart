@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../models/notifications_model.dart';
 import 'notification_list_item.dart';
 import 'empty_notification_state.dart';
 
