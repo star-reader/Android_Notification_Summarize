@@ -127,6 +127,7 @@ class MessageFiles {
       // 写入加密后的数据
       await file.writeAsString(encryptedData);
     } catch (e) {
+      this.deleteDatabase();
       throw Exception('写入通知数据失败: $e');
     }
   }
@@ -162,6 +163,7 @@ class MessageFiles {
       
       return model;
     } catch (e) {
+      this.deleteDatabase();
       throw Exception('读取通知数据失败: $e');
     }
   }

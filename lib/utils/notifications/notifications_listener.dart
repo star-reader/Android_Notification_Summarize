@@ -17,6 +17,8 @@ class NotificationsListener {
 
   bool _isRequestingPermission = false;  // 添加标志位防止重复请求
 
+  final Set<String> _processedNotificationIds = {};
+
   void startPeriodicAnalysis() {
     _periodicAnalysisTimer?.cancel();
     _periodicAnalysisTimer = Timer.periodic(const Duration(minutes: 3), (timer) {
@@ -51,13 +53,26 @@ class NotificationsListener {
       startPeriodicAnalysis();
 
       NotificationListenerService.notificationsStream.listen(
-        (event) async {  // 修改为 async 回调
+        (event) async {
           try {
             if (event.title == null ||
                 event.content == null ||
                 event.packageName == null) {
               return;
             }
+
+            // 生成更精确的通知唯一标识
+            final notificationKey = '${event.packageName}_${event.title}_${event.content}';
+            
+            // 检查是否已经处理过这条通知
+            if (_processedNotificationIds.contains(notificationKey)) {
+              print('跳过重复通知: $notificationKey');
+              return;
+            }
+            _processedNotificationIds.add(notificationKey);
+
+            // 清理旧的通知ID（保持最近5分钟的记录）
+            _cleanupProcessedIds();
 
             if (event.hasRemoved ?? false) {
               return;
@@ -78,45 +93,37 @@ class NotificationsListener {
               hasAnalyzed: false,
             );
 
-            // 使用 Future.microtask 来处理事件发送
-            await Future.microtask(() {
-              // 1. 发送到 EventBus
-              eventBus.fire(notificationItemModel);
-
-              eventBus.fire(NotificationReceivedEvent(
-                title: event.title,
-                content: event.content,
-                packageName: event.packageName,
-                id: event.id?.toString() ?? '0',
-                time: DateTime.now().toString(),
-              ));
-            });
-
-            // 2. 存储到临时存储
-            notificationStore.addNotificationByPackageName(
-              event.packageName ?? '',
-              notificationItemModel
-            );
-
-            // 3. 保存到本地数据库
-            await _saveToLocalDatabase(notificationItemModel, messageFiles);
-
-            // 4. 立即检查是否需要分析
-            _checkAndTriggerAnalysis(event.packageName ?? '');
+            // 使用单一的异步操作
+            await _processNotification(notificationItemModel, messageFiles);
           } catch (e) {
             print('处理通知时出错: $e');
           }
         },
         onError: (error) {
           print('通知监听出错: $error');
-          _isRequestingPermission = false;
         },
-        cancelOnError: false,  // 防止因错误而停止监听
+        cancelOnError: false,
       );
     } catch (e) {
       print('启动通知监听服务出错: $e');
-      _isRequestingPermission = false;
     }
+  }
+
+  Future<void> _processNotification(NotificationItemModel notification, MessageFiles messageFiles) async {
+    // 1. 存储到临时存储
+    notificationStore.addNotificationByPackageName(
+      notification.packageName ?? '',
+      notification
+    );
+    
+    // 2. 保存到本地数据库
+    await _saveToLocalDatabase(notification, messageFiles);
+    
+    // 3. 发送到 EventBus
+    eventBus.fire(notification);
+    
+    // 4. 检查是否需要分析
+    _throttledTriggerAnalysis(notification.packageName ?? '');
   }
 
   Future<void> _saveToLocalDatabase(
@@ -133,6 +140,24 @@ class NotificationsListener {
     } catch (e) {
       print('保存通知到本地数据库时出错: $e');
     }
+  }
+
+  // 添加节流控制
+  DateTime? _lastAnalysisTime;
+  static const Duration _minAnalysisInterval = Duration(seconds: 2);
+
+  void _throttledTriggerAnalysis(String packageName) {
+    final now = DateTime.now();
+    if (_lastAnalysisTime != null) {
+      final timeSinceLastAnalysis = now.difference(_lastAnalysisTime!);
+      if (timeSinceLastAnalysis < _minAnalysisInterval) {
+        print('跳过频繁的分析触发');
+        return;
+      }
+    }
+    _lastAnalysisTime = now;
+    
+    _checkAndTriggerAnalysis(packageName);
   }
 
   void _checkAndTriggerAnalysis(String packageName) {
@@ -179,6 +204,13 @@ class NotificationsListener {
     }
   
     return false;
+  }
+
+  void _cleanupProcessedIds() {
+    final now = DateTime.now();
+    final cutoffTime = now.subtract(const Duration(minutes: 5));
+    
+    _processedNotificationIds.clear(); // 每5分钟清理一次所有记录
   }
 }
 

@@ -19,7 +19,7 @@ class SendSummary {
       'usagi push channel',
       'Usagi Push Channel',
       channelDescription: 'Usagi Push Channel',
-      importance: Importance.defaultImportance,
+      importance: Importance.high,
       priority: Priority.high,
     );
 

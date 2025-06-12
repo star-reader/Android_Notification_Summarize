@@ -6,7 +6,6 @@ import 'package:notification_summarize/services/files/message_files.dart';
 
 import '../../models/notifications_model.dart';
 import '../../utils/sha_utils.dart';
-import '../providers/demo_event_bus.dart';
 import '../providers/global_notification_store.dart';
 import '../../configs/private/config_store.dart';
 import 'package:dio/dio.dart';
@@ -14,123 +13,81 @@ import '../../utils/notifications/send_summary.dart';
 
 // 这里主要就是接收temp通知，发到服务器去获取摘要的了
 class SummarizeTasks {
-  // 定义时间窗口（例如：3分钟内的消息视为一组）
+  static final SummarizeTasks _instance = SummarizeTasks._internal();
+  factory SummarizeTasks() => _instance;
+  SummarizeTasks._internal();
+
+  static const int minContentLength = 25;
   static const Duration timeWindow = Duration(minutes: 40);
-  static const int minMessagesForAnalysis = 3; // 最小分析消息数
-  static const int minSingleMessageLength = 16; // 单条消息最小内容长度
+  static const int minMessagesForAnalysis = 2;
 
-  void startSummarizeTask() {
-    final notificationStore = NotificationStore();
-    final notifications = notificationStore.notificationList;
-    
-    // 按包名分组的Map
-    Map<String, List<NotificationItemModel>> packageGroups = {};
-
-    // 第一步：按包名分组并提取NotificationItemModel
-    for (var notification in notifications) {
-      final packageName = notification['packageName'] as String;
-      final data = notification['data'];
-      
-      // 由于我们现在的data是List<NotificationItemModel>
-      if (data is List) {
-        if (!packageGroups.containsKey(packageName)) {
-          packageGroups[packageName] = [];
-        }
-        
-        for (var item in data) {
-          if (item is NotificationItemModel) {
-            packageGroups[packageName]!.add(item);
-          }
-        }
-      }
-    }
-
-    // 第二步：处理每个包的通知，按时间窗口和分析状态分组
-    List<List<NotificationItemModel>> unAnalyzedGroups = [];
-
-    for (var entry in packageGroups.entries) {
-      var packageNotifications = entry.value;
-      
-      // 按时间排序
-      packageNotifications.sort((a, b) {
-        final timeA = DateTime.parse(a.time ?? DateTime.now().toString());
-        final timeB = DateTime.parse(b.time ?? DateTime.now().toString());
-        return timeA.compareTo(timeB);
-      });
-      
-
-      List<NotificationItemModel> currentGroup = [];
-      DateTime? lastMessageTime;
-
-      for (var notification in packageNotifications) {
-        final currentTime = DateTime.parse(notification.time ?? DateTime.now().toString());
-        bool needsAnalysis = !(notification.hasAnalyzed ?? false);
-        
-        if (needsAnalysis) {
-          if (lastMessageTime != null && 
-              currentTime.difference(lastMessageTime!) > timeWindow && 
-              currentGroup.isNotEmpty) {
-            unAnalyzedGroups.add(List.from(currentGroup));
-            currentGroup.clear();
-          }
-          
-          currentGroup.add(notification);
-          lastMessageTime = currentTime;
-        }
-      }
-
-      if (currentGroup.isNotEmpty) {
-        unAnalyzedGroups.add(List.from(currentGroup));
-      }
-    }
-    
-    if (unAnalyzedGroups.isEmpty) {
+  bool _isProcessing = false;
+  
+  Future<void> startSummarizeTask() async {
+    if (_isProcessing) {
+      print('已有分析任务在进行中，跳过');
       return;
     }
 
-    processUnanalyzedGroups(unAnalyzedGroups);
-  }
-
-  void processUnanalyzedGroups(List<List<NotificationItemModel>> groups) {
-    print('开始处理消息组，组数: ${groups.length}');
-    
-    for (var group in groups) {
-      if (group.isEmpty) {
-        print('跳过空组');
-        continue;
-      }
-
-      final packageName = group[0].packageName;
-      print('处理包名: $packageName 的消息组，消息数量: ${group.length}');
+    try {
+      _isProcessing = true;
       
-      // 去重处理
-      group = _removeDuplicateMessages(group);
-      print('去重后消息数量: ${group.length}');
+      final notificationStore = NotificationStore();
+      final notifications = notificationStore.notificationList;
+      
+      // 按包名分组的Map
+      Map<String, List<NotificationItemModel>> packageGroups = {};
 
-      // 如果只有一条消息，检查内容长度
-      if (group.length == 1) {
-        final content = group[0].content ?? '';
-        print('单条消息长度: ${content.length}');
+      // 第一步：按包名分组并提取NotificationItemModel
+      for (var notification in notifications) {
+        final packageName = notification['packageName'] as String;
+        final data = notification['data'];
         
-        if (content.length >= 16) {
-          print('发送单条长消息到服务器');
-          sendToAnalysisServer(packageName ?? '', _prepareMessages(group));
-          updateAnalysisStatus(group);
-        } else {
-          print('单条消息太短，标记为已分析');
-          updateAnalysisStatus(group);
+        if (data is List) {
+          if (!packageGroups.containsKey(packageName)) {
+            packageGroups[packageName] = [];
+          }
+          
+          for (var item in data) {
+            if (item is NotificationItemModel && !(item.hasAnalyzed ?? false)) {
+              packageGroups[packageName]!.add(item);
+            }
+          }
         }
-        continue;
       }
 
-      // 处理多条消息
-      if (group.length >= 2) {  // 改为2条就触发
-        print('发送多条消息到服务器');
-        sendToAnalysisServer(packageName ?? '', _prepareMessages(group));
-        updateAnalysisStatus(group);
-      } else {
-        print('消息数量不足，不处理');
+      // 处理每个包的通知组
+      for (var entry in packageGroups.entries) {
+        var packageNotifications = entry.value;
+        if (packageNotifications.isEmpty) continue;
+
+        // 按时间排序
+        packageNotifications.sort((a, b) {
+          final timeA = DateTime.parse(a.time ?? DateTime.now().toString());
+          final timeB = DateTime.parse(b.time ?? DateTime.now().toString());
+          return timeA.compareTo(timeB);
+        });
+
+        // 去重处理
+        final uniqueNotifications = _removeDuplicateMessages(packageNotifications);
+        
+        if (uniqueNotifications.length == 1) {
+          // 单条消息处理
+          final content = uniqueNotifications[0].content ?? '';
+          if (content.length >= 16) {
+            await sendToAnalysisServer(entry.key, uniqueNotifications);
+            await updateAnalysisStatus(uniqueNotifications);
+          } else {
+            await updateAnalysisStatus(uniqueNotifications);
+          }
+        } else if (uniqueNotifications.length >= 2) {
+          // 多条消息处理
+          await sendToAnalysisServer(entry.key, uniqueNotifications);
+          await updateAnalysisStatus(uniqueNotifications);
+        }
       }
+    } finally {
+      _isProcessing = false;
     }
   }
 
@@ -139,37 +96,44 @@ class SummarizeTasks {
     final seenContents = <String>{};
 
     for (var message in messages) {
-      final content = message.content ?? '';
-      final title = message.title ?? '';
-      
-      // 创建消息的唯一标识（标题+内容）
-      final messageKey = '$title$content';
-      
-      // 如果这个内容之前没见过，就添加到结果中
-      if (!seenContents.contains(messageKey)) {
-        seenContents.add(messageKey);
+      final contentKey = '${message.title}_${message.content}';
+      if (!seenContents.contains(contentKey)) {
+        seenContents.add(contentKey);
         uniqueMessages.add(message);
       }
     }
 
+    print('去重前消息数: ${messages.length}, 去重后消息数: ${uniqueMessages.length}');
     return uniqueMessages;
   }
 
-  List<Map<String, String>> _prepareMessages(List<NotificationItemModel> group) {
-    return group.map((notification) => {
+  List<Map<String, String>> _prepareMessages(List<NotificationItemModel> notifications) {
+    return notifications.map((notification) => {
       'title': notification.title ?? '',
       'content': notification.content ?? '',
       'time': notification.time ?? '',
     }).toList();
   }
 
-  Future<void> sendToAnalysisServer(String packageName, List<Map<String, String>> messages) async {
-    print('准备发送到服务器，消息数量: ${messages.length}');
-    
+  Future<void> sendToAnalysisServer(String packageName, List<NotificationItemModel> messages) async {
+    if (messages.isEmpty) {
+      print('没有消息需要发送');
+      return;
+    }
+
+    // 去重处理
+    final uniqueMessages = _removeDuplicateMessages(messages);
+    if (uniqueMessages.isEmpty) {
+      print('去重后没有消息需要发送');
+      return;
+    }
+
+    // 转换为API需要的格式
+    final preparedMessages = _prepareMessages(uniqueMessages);
+
     try {
       var token = await FetchToken.fetchToken();
-      print('获取到token');
-
+      
       final applyIdResponse = await dio.post(
         '${ConfigStore.apiEndpoint}/api/connect',
         options: Options(
@@ -178,18 +142,24 @@ class SummarizeTasks {
           },
         ),
       );
-      print('获取到applyId');
 
       final applyId = applyIdResponse.data['applyId'];
-      final data = {'currentTime': DateTime.now().toString(), 'data': messages};
       
-      print('发送数据到服务器');
+      // 构建单个请求对象
+      final requestData = {
+        'currentTime': DateTime.now().toString(),
+        'data': preparedMessages,  // 使用转换后的消息数组
+      };
+
+      print('发送数据到服务器: ${jsonEncode(requestData)}');
+      
+      // 发送请求
       final response = await dio.post(
         '${ConfigStore.apiEndpoint}/api/generate',
         data: {
-          'data': jsonEncode(data),
+          'data': jsonEncode(requestData),
           'applyId': applyId,
-          'verify': calculateSHA256(jsonEncode(data)),
+          'verify': calculateSHA256(jsonEncode(requestData)),
         },
         options: Options(
           headers: {
