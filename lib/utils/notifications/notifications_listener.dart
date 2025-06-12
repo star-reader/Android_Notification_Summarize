@@ -148,7 +148,7 @@ class NotificationsListener {
 
     final now = DateTime.now();
     final timeWindow = const Duration(minutes: 40);
-    final minNotifications = 3;  // 保持原有的最小通知数量阈值
+    final minNotifications = 3;  // 最小通知数量阈值
     
     // 获取最近时间窗口内的未分析通知
     final recentUnanalyzed = notifications.where((notification) {
@@ -160,26 +160,22 @@ class NotificationsListener {
       return timeDiff <= timeWindow;
     }).toList();
 
-    // 如果只有一条消息，直接在 SummarizeTasks 中处理长度判断
-    if (recentUnanalyzed.length == 1) {
-      return true;
+    // 调试输出
+    print('未分析的通知数量: ${recentUnanalyzed.length}');
+    if (recentUnanalyzed.isNotEmpty) {
+      print('第一条未分析通知内容长度: ${recentUnanalyzed[0].content?.length}');
     }
 
-    // 检查通知数量和时间间隔
-    if (recentUnanalyzed.length >= minNotifications) {
-      // 检查最新两条通知的时间间隔
-      final latestTime = DateTime.parse(recentUnanalyzed.last.time!);
-      final previousTime = DateTime.parse(recentUnanalyzed[recentUnanalyzed.length - 2].time!);
-      
-      // 如果最新两条通知间隔小于1分钟，立即触发分析
-      if (latestTime.difference(previousTime).inMinutes < 1) {
-        return true;
-      }
-      
-      // 如果累积了3条以上未分析的通知，也触发分析
-      if (recentUnanalyzed.length >= 3) {
-        return true;
-      }
+    // 如果只有一条消息，检查内容长度
+    if (recentUnanalyzed.length == 1) {
+      final contentLength = recentUnanalyzed[0].content?.length ?? 0;
+      print('单条消息长度: $contentLength');
+      return contentLength >= 16; // 只有内容长度大于等于16才触发分析
+    }
+
+    // 如果有多条消息，使用原有逻辑
+    if (recentUnanalyzed.length >= 2) {
+      return true; // 两条或以上直接触发分析
     }
   
     return false;

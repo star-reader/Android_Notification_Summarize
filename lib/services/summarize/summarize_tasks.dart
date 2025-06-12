@@ -92,31 +92,44 @@ class SummarizeTasks {
   }
 
   void processUnanalyzedGroups(List<List<NotificationItemModel>> groups) {
+    print('开始处理消息组，组数: ${groups.length}');
+    
     for (var group in groups) {
-      if (group.isEmpty) continue;
+      if (group.isEmpty) {
+        print('跳过空组');
+        continue;
+      }
 
       final packageName = group[0].packageName;
+      print('处理包名: $packageName 的消息组，消息数量: ${group.length}');
       
       // 去重处理
       group = _removeDuplicateMessages(group);
-      
+      print('去重后消息数量: ${group.length}');
+
       // 如果只有一条消息，检查内容长度
       if (group.length == 1) {
         final content = group[0].content ?? '';
-        if (content.length >= minSingleMessageLength) {
+        print('单条消息长度: ${content.length}');
+        
+        if (content.length >= 16) {
+          print('发送单条长消息到服务器');
           sendToAnalysisServer(packageName ?? '', _prepareMessages(group));
           updateAnalysisStatus(group);
         } else {
-          // 如果内容太短，直接标记为已分析
+          print('单条消息太短，标记为已分析');
           updateAnalysisStatus(group);
         }
         continue;
       }
 
-      // 处理多条消息，保持原有逻辑
-      if (group.length >= minMessagesForAnalysis) {
+      // 处理多条消息
+      if (group.length >= 2) {  // 改为2条就触发
+        print('发送多条消息到服务器');
         sendToAnalysisServer(packageName ?? '', _prepareMessages(group));
         updateAnalysisStatus(group);
+      } else {
+        print('消息数量不足，不处理');
       }
     }
   }
@@ -151,46 +164,52 @@ class SummarizeTasks {
   }
 
   Future<void> sendToAnalysisServer(String packageName, List<Map<String, String>> messages) async {
-    if (messages.length < minMessagesForAnalysis) {
-      return;
-    }
-    eventBus.fire(DemoSummaryStart(
-      title: '发送API啦，消息数量: ${messages.length}个！',
-      content: jsonEncode(messages),
-      time: DateTime.now().toString(),
-    ));
-
-    var token = await FetchToken.fetchToken();
-
-    final applyIdResponse = await dio.post('${ConfigStore.apiEndpoint}/api/connect', options: Options(
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    ));
-
-    final applyId = applyIdResponse.data['applyId'];
-
-
-    final data = {'currentTime': DateTime.now().toString(), 'data': messages};
+    print('准备发送到服务器，消息数量: ${messages.length}');
     
-    final response = await dio.post('${ConfigStore.apiEndpoint}/api/generate', data: {
-      'data':  jsonEncode(data),
-      'applyId': applyId,
-      'verify': calculateSHA256(jsonEncode(data)),
-      }, options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
+    try {
+      var token = await FetchToken.fetchToken();
+      print('获取到token');
+
+      final applyIdResponse = await dio.post(
+        '${ConfigStore.apiEndpoint}/api/connect',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+      print('获取到applyId');
+
+      final applyId = applyIdResponse.data['applyId'];
+      final data = {'currentTime': DateTime.now().toString(), 'data': messages};
+      
+      print('发送数据到服务器');
+      final response = await dio.post(
+        '${ConfigStore.apiEndpoint}/api/generate',
+        data: {
+          'data': jsonEncode(data),
+          'applyId': applyId,
+          'verify': calculateSHA256(jsonEncode(data)),
         },
-        followRedirects: false,
-        validateStatus: (status) => true,
-      )
-    );
-    if (response.statusCode == 200) {
-      SendSummary().sendSummaryNotification(response.data['summary']);
-    }else{
-      print('发送失败~~~~');
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+          followRedirects: false,
+          validateStatus: (status) => true,
+        ),
+      );
+
+      print('服务器响应状态码: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        print('发送成功，准备显示摘要通知');
+        SendSummary().sendSummaryNotification(response.data['summary']);
+      } else {
+        print('发送失败: ${response.data}');
+      }
+    } catch (e) {
+      print('发送过程中出错: $e');
     }
-     
   }
 
   Future<void> updateAnalysisStatus(List<NotificationItemModel> group) async {
