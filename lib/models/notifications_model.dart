@@ -82,3 +82,15 @@ class NotificationSummaryModel {
   List<String>? messageUuid; // 它对应的message的uuid们
 
 }
+
+class DemoSummaryStart {
+  String? title;
+  String? content;
+  String? time;
+
+  DemoSummaryStart({
+    this.title,
+    this.content,
+    this.time
+  });
+}

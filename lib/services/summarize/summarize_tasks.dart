@@ -6,6 +6,7 @@ import 'package:notification_summarize/services/files/message_files.dart';
 
 import '../../models/notifications_model.dart';
 import '../../utils/sha_utils.dart';
+import '../providers/demo_event_bus.dart';
 import '../providers/global_notification_store.dart';
 import '../../configs/private/config_store.dart';
 import 'package:dio/dio.dart';
@@ -117,7 +118,12 @@ class SummarizeTasks {
     if (messages.length < minMessagesForAnalysis) {
       return;
     }
-    print('发送API啦，消息数量: ${messages.length}个！');
+    eventBus.fire(DemoSummaryStart(
+      title: '发送API啦，消息数量: ${messages.length}个！',
+      content: jsonEncode(messages),
+      time: DateTime.now().toString(),
+    ));
+    
     var token = await FetchToken.fetchToken();
 
     final applyIdResponse = await dio.post('${ConfigStore.apiEndpoint}/api/connect', options: Options(

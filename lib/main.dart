@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'models/notifications_model.dart';
 import 'widgets/navigations/navigation_mobile.dart';
 import 'package:provider/provider.dart';
 import 'utils/demo_notifications.dart';
@@ -175,7 +176,53 @@ class _DemoContentAreaState extends State<DemoContentArea> {
           Text('Content: ${notificationReceivedEvent?.content ?? ''}'),
           Text('Package Name: ${notificationReceivedEvent?.packageName ?? ''}'),
           Text('ID: ${notificationReceivedEvent?.id ?? ''}'),
-          Text('Time: ${notificationReceivedEvent?.time ?? ''}')
+          Text('Time: ${notificationReceivedEvent?.time ?? ''}'),
+          SizedBox(height: 20),
+          Text('summary area')
+        ],
+      ),
+    );
+  }
+}
+
+class DemoSummaryArea extends StatefulWidget {
+  const DemoSummaryArea({super.key});
+
+  @override
+  State<DemoSummaryArea> createState() => _DemoSummaryAreaState();
+}
+
+class _DemoSummaryAreaState extends State<DemoSummaryArea> {
+
+  DemoSummaryStart? demoSummaryStart;
+
+  late StreamSubscription<DemoSummaryStart> _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscription = eventBus.on<DemoSummaryStart>().listen((event) {
+      setState(() {
+        demoSummaryStart = event;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Text('Title: ${demoSummaryStart?.title ?? ''}'),
+          Text('Content: ${demoSummaryStart?.content ?? ''}'),
+          Text('Time: ${demoSummaryStart?.time ?? ''}')
         ],
       ),
     );

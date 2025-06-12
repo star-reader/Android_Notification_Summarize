@@ -61,6 +61,14 @@ class NotificationsListener {
 
         // 1. 发送到 EventBus
         eventBus.fire(notificationItemModel);
+
+        eventBus.fire(NotificationReceivedEvent(
+          title: event.title,
+          content: event.content,
+          packageName: event.packageName,
+          id: event.id?.toString() ?? '0',
+          time: DateTime.now().toString(),
+        ));
         
         // 2. 存储到临时存储并打印日志确认
         notificationStore.addNotificationByPackageName(
