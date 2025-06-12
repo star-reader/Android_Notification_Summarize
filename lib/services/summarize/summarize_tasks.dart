@@ -17,6 +17,7 @@ class SummarizeTasks {
   // 定义时间窗口（例如：3分钟内的消息视为一组）
   static const Duration timeWindow = Duration(minutes: 40);
   static const int minMessagesForAnalysis = 3; // 最小分析消息数
+  static const int minSingleMessageLength = 16; // 单条消息最小内容长度
 
   void startSummarizeTask() {
     final notificationStore = NotificationStore();
@@ -91,27 +92,62 @@ class SummarizeTasks {
   }
 
   void processUnanalyzedGroups(List<List<NotificationItemModel>> groups) {
-    
     for (var group in groups) {
-      if (group.isEmpty) {
+      if (group.isEmpty) continue;
+
+      final packageName = group[0].packageName;
+      
+      // 去重处理
+      group = _removeDuplicateMessages(group);
+      
+      // 如果只有一条消息，检查内容长度
+      if (group.length == 1) {
+        final content = group[0].content ?? '';
+        if (content.length >= minSingleMessageLength) {
+          sendToAnalysisServer(packageName ?? '', _prepareMessages(group));
+          updateAnalysisStatus(group);
+        } else {
+          // 如果内容太短，直接标记为已分析
+          updateAnalysisStatus(group);
+        }
         continue;
       }
 
-      final packageName = group[0].packageName;
-
-      // 只处理符合最小数量要求的组
+      // 处理多条消息，保持原有逻辑
       if (group.length >= minMessagesForAnalysis) {
-        
-        List<Map<String, String>> messages = group.map((notification) => {
-          'title': notification.title ?? '',
-          'content': notification.content ?? '',
-          'time': notification.time ?? '',
-        }).toList();
-
-        sendToAnalysisServer(packageName ?? '', messages);
+        sendToAnalysisServer(packageName ?? '', _prepareMessages(group));
         updateAnalysisStatus(group);
       }
     }
+  }
+
+  List<NotificationItemModel> _removeDuplicateMessages(List<NotificationItemModel> messages) {
+    final uniqueMessages = <NotificationItemModel>[];
+    final seenContents = <String>{};
+
+    for (var message in messages) {
+      final content = message.content ?? '';
+      final title = message.title ?? '';
+      
+      // 创建消息的唯一标识（标题+内容）
+      final messageKey = '$title$content';
+      
+      // 如果这个内容之前没见过，就添加到结果中
+      if (!seenContents.contains(messageKey)) {
+        seenContents.add(messageKey);
+        uniqueMessages.add(message);
+      }
+    }
+
+    return uniqueMessages;
+  }
+
+  List<Map<String, String>> _prepareMessages(List<NotificationItemModel> group) {
+    return group.map((notification) => {
+      'title': notification.title ?? '',
+      'content': notification.content ?? '',
+      'time': notification.time ?? '',
+    }).toList();
   }
 
   Future<void> sendToAnalysisServer(String packageName, List<Map<String, String>> messages) async {
@@ -123,7 +159,7 @@ class SummarizeTasks {
       content: jsonEncode(messages),
       time: DateTime.now().toString(),
     ));
-    
+
     var token = await FetchToken.fetchToken();
 
     final applyIdResponse = await dio.post('${ConfigStore.apiEndpoint}/api/connect', options: Options(
