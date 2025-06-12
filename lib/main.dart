@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'widgets/navigations/navigation_mobile.dart';
@@ -11,11 +13,33 @@ import 'services/providers/global_notification_store.dart';
 import 'services/providers/navigation_store.dart';
 import 'pages/notifications_data/notifications_data_index.dart';
 import 'services/providers/token_store.dart';
-import 'services/auth/fetch_token.dart';
 
 final dio = Dio();
 
+Future<void> checkAndRequestPermissions() async {
+  // 检查通知监听权限
+  final bool notificationListenerStatus = 
+      await NotificationListenerService.isPermissionGranted();
+  
+  if (!notificationListenerStatus) {
+    // 打开系统设置页面，让用户手动开启通知访问权限
+    await NotificationListenerService.requestPermission();
+    // 提示用户需要手动开启权限
+    // 这里可以使用对话框提示用户具体操作步骤
+  }
+
+  // 检查通知发送权限（Android 13及以上需要）
+  if (Platform.isAndroid) {
+    final status = await Permission.notification.status;
+    if (status.isDenied) {
+      await Permission.notification.request();
+    }
+  }
+}
+
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  checkAndRequestPermissions();
   runApp(
     MultiProvider(
       providers: [
@@ -68,7 +92,7 @@ class MyApp extends StatelessWidget {
     // 预准备工作
     // clearOldNotifications();
     // 测试的通知页面
-    sendNotification();
+    // sendNotification();
 
     return MaterialApp(
       home: Scaffold(
